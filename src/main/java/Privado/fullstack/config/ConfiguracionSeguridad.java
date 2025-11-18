@@ -1,10 +1,8 @@
-
 package Privado.fullstack.config;
-
-import Privado.fullstack.service.ServicioAutenticacion;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy; // 💡 Importante: Añadir la importación de @Lazy
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -14,63 +12,63 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class ConfiguracionSeguridad {
 
-    // 2. CORRECCIÓN: Inyectamos ServicioAutenticacion
-    private final ServicioAutenticacion servicioAutenticacion;
+    private final FiltroSolicitudJwt filtroSolicitudJwt;
 
-    public ConfiguracionSeguridad(ServicioAutenticacion servicioAutenticacion) { // 3. CORRECCIÓN: Constructor
-        this.servicioAutenticacion = servicioAutenticacion;
+    // 🔑 CORRECCIÓN FINAL: Usamos @Lazy aquí para que el filtro se inicialice
+    // solo cuando sea estrictamente necesario, rompiendo el ciclo.
+    public ConfiguracionSeguridad(@Lazy FiltroSolicitudJwt filtroSolicitudJwt) {
+        this.filtroSolicitudJwt = filtroSolicitudJwt;
     }
 
-    // Bean para el encriptador de contraseñas (BCrypt)
+    // --- Beans Fundamentales ---
+
     @Bean
     public PasswordEncoder codificadorContrasena() {
         return new BCryptPasswordEncoder();
     }
 
-    // Bean para el manejador de autenticación
+    // El AuthenticationManager se inyecta correctamente en ServicioAutenticacion
+    // cuando se define aquí (y ServicioAutenticacion tiene @Lazy).
     @Bean
     public AuthenticationManager administradorAutenticacion(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
     }
 
-    // Bean principal que configura la cadena de filtros de seguridad
+    // --- Cadena de Filtros de Seguridad ---
+
     @Bean
     public SecurityFilterChain cadenaFiltrosSeguridad(HttpSecurity http) throws Exception {
         http
                 // Deshabilita CSRF
                 .csrf(csrf -> csrf.disable())
 
-                // Configura la gestión de sesiones: sin estado (STATELESS) para JWT
+                // Configura la gestión de sesiones: sin estado (STATELESS)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
-                // Configura las reglas de autorización de peticiones (rutas)
+                // Configura las reglas de autorización
                 .authorizeHttpRequests(auth -> auth
+                        // Rutas públicas
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/v1/productos/**").permitAll()
 
-                        // 1. Rutas públicas (Catálogo y Autenticación)
-                        .requestMatchers("/api/v1/auth/**").permitAll() // Login y Registro
-                        .requestMatchers("/api/v1/productos/**").permitAll() // Catálogo público (lectura)
-
-                        // 2. Rutas de Cliente (ej: crear pedido, ver sus pedidos)
-                        // NOTA: Debes cambiar la regla aquí si quieres que el CLIENTE pueda ver sus pedidos.
-                        // Para pruebas iniciales, lo dejamos así.
+                        // Rutas protegidas
                         .requestMatchers("/api/v1/pedidos/**").hasAnyRole("ADMIN", "VENDOR", "CLIENT")
-
-                        // 3. Rutas de Administración (Solo ADMIN)
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
-                        // 4. Las demás rutas deben ser autenticadas
                         .anyRequest().authenticated()
                 );
 
-        // NOTA: Falta añadir el FiltroSolicitudJwt aquí.
+        // ✅ Añadir el FiltroSolicitudJwt a la cadena
+        http.addFilterBefore(filtroSolicitudJwt, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

@@ -7,6 +7,7 @@ import Privado.fullstack.model.entity.Rol;
 import Privado.fullstack.model.entity.Usuario;
 import Privado.fullstack.repository.RepositorioRol;
 import Privado.fullstack.repository.RepositorioUsuario;
+import org.springframework.context.annotation.Lazy; // 💡 Importante: Añadir la importación de @Lazy
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -21,18 +22,20 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Service
-// Asegúrate de que la clase sea pública para ser accesible desde otros paquetes.
 public class ServicioAutenticacion implements UserDetailsService {
 
     public final RepositorioUsuario repositorioUsuario;
     private final RepositorioRol repositorioRol;
     private final PasswordEncoder codificadorContrasena;
+
+    // 🔑 Corrección 1: Usamos @Lazy en la inyección de AuthenticationManager para romper el ciclo.
     private final AuthenticationManager administradorAutenticacion;
     private final UtilidadJwt utilidadJwt;
 
     // Constructor con Inyección de Dependencias
     public ServicioAutenticacion(RepositorioUsuario repositorioUsuario, RepositorioRol repositorioRol,
-                                 PasswordEncoder codificadorContrasena, AuthenticationManager administradorAutenticacion,
+                                 PasswordEncoder codificadorContrasena,
+                                 @Lazy AuthenticationManager administradorAutenticacion, // Aplicamos @Lazy aquí
                                  UtilidadJwt utilidadJwt) {
         this.repositorioUsuario = repositorioUsuario;
         this.repositorioRol = repositorioRol;
@@ -47,7 +50,6 @@ public class ServicioAutenticacion implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // Verificamos si el usuario existe en la base de datos y lanzamos una excepción personalizada si no se encuentra.
         return repositorioUsuario.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con el nombre de usuario: " + username));
     }
@@ -75,7 +77,7 @@ public class ServicioAutenticacion implements UserDetailsService {
         usuario.setPassword(codificadorContrasena.encode(solicitud.getPassword()));
 
         // 3. Asignar Rol por defecto (CLIENTE)
-        final String NOMBRE_ROL_CLIENTE = "ROLE_CLIENT"; // El nombre del rol de CLIENTE
+        final String NOMBRE_ROL_CLIENTE = "ROLE_CLIENT";
         Rol rolCliente = repositorioRol.findByName(NOMBRE_ROL_CLIENTE)
                 .orElseThrow(() -> new RuntimeException("Error: El rol de CLIENTE no fue encontrado en la base de datos."));
 
@@ -86,6 +88,7 @@ public class ServicioAutenticacion implements UserDetailsService {
         // 4. Guardar en la base de datos
         return repositorioUsuario.save(usuario);
     }
+
 
     /**
      * Procesa la solicitud de login y genera un token JWT.
@@ -98,6 +101,6 @@ public class ServicioAutenticacion implements UserDetailsService {
 
         // 2. Si la autenticación es exitosa, generar el token JWT
         UserDetails detallesUsuario = (UserDetails) authentication.getPrincipal();
-        return utilidadJwt.generarToken(detallesUsuario); // Generar el token JWT para el usuario autenticado
+        return utilidadJwt.generarToken(detallesUsuario);
     }
 }
