@@ -15,7 +15,6 @@ public class Rol {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Cambiado de RolEnum a String para evitar el uso de enum
     @Column(length = 20, nullable = false, unique = true)
     private String name;
 

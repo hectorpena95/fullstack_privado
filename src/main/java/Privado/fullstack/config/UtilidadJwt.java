@@ -1,6 +1,7 @@
 package Privado.fullstack.config;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
@@ -29,7 +30,7 @@ public class UtilidadJwt {
     // --- MÉTODOS PÚBLICOS CRUCIALES ---
 
     /**
-     * 1. Extrae el nombre de usuario (subject) del token JWT. (Resuelve el error)
+     * 1. Extrae el nombre de usuario (subject) del token JWT.
      */
     public String extraerUsername(String token) {
         return extraerClaim(token, Claims::getSubject);
@@ -71,14 +72,16 @@ public class UtilidadJwt {
         return extraerExpiracion(token).before(new Date());
     }
 
-
     private Claims extraerTodasLasClaims(String token) {
-        return Jwts.parserBuilder() // <-- Esta es la llamada que el compilador no encuentra
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+        // Crear un JwtParser utilizando el builder
+        JwtParser parser = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())  // Configurar la clave de firma
+                .build();  // Obtener el JwtParser
+
+        // Usar el JwtParser para parsear el JWT
+        return parser.parseClaimsJws(token).getBody();  // Parsear el token y obtener el cuerpo de los claims
     }
+
 
     // Método auxiliar para extraer claims específicas
     public <T> T extraerClaim(String token, Function<Claims, T> claimsResolver) {
@@ -88,7 +91,7 @@ public class UtilidadJwt {
 
     // Método para generar la clave de firma segura a partir de la cadena secreta
     private SecretKey getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secret);
-        return Keys.hmacShaKeyFor(keyBytes);
+        byte[] keyBytes = Decoders.BASE64.decode(secret);  // Decodificación de la clave secreta
+        return Keys.hmacShaKeyFor(keyBytes);  // Generación de la clave de firma
     }
 }

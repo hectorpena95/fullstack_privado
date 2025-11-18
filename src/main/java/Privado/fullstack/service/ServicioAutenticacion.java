@@ -11,8 +11,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService; // ¡Nuevo Import!
-import org.springframework.security.core.userdetails.UsernameNotFoundException; // ¡Nuevo Import!
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +21,10 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Service
-// Implementar la interfaz UserDetailsService
+// Asegúrate de que la clase sea pública para ser accesible desde otros paquetes.
 public class ServicioAutenticacion implements UserDetailsService {
 
-    private final RepositorioUsuario repositorioUsuario;
+    public final RepositorioUsuario repositorioUsuario;
     private final RepositorioRol repositorioRol;
     private final PasswordEncoder codificadorContrasena;
     private final AuthenticationManager administradorAutenticacion;
@@ -42,17 +42,15 @@ public class ServicioAutenticacion implements UserDetailsService {
     }
 
     /**
-     * MÉTODO REQUERIDO por UserDetailsService
-     * Carga el usuario de la base de datos por el nombre de usuario.
+     * Carga el usuario desde la base de datos por el nombre de usuario.
      */
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // Retorna la entidad Usuario (que implementa UserDetails)
+        // Verificamos si el usuario existe en la base de datos y lanzamos una excepción personalizada si no se encuentra.
         return repositorioUsuario.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con el nombre de usuario: " + username));
     }
-
 
     /**
      * Registra un nuevo Usuario y le asigna el rol por defecto (CLIENTE).
@@ -61,10 +59,10 @@ public class ServicioAutenticacion implements UserDetailsService {
     public Usuario registrarNuevoUsuario(SolicitudRegistro solicitud) {
         // 1. Validar que el usuario no exista
         if (repositorioUsuario.existsByUsername(solicitud.getUsername())) {
-            throw new RuntimeException("El nombre de usuario ya está en uso.");
+            throw new RuntimeException("El nombre de usuario '" + solicitud.getUsername() + "' ya está en uso.");
         }
         if (repositorioUsuario.existsByEmail(solicitud.getEmail())) {
-            throw new RuntimeException("El email ya está en uso.");
+            throw new RuntimeException("El email '" + solicitud.getEmail() + "' ya está en uso.");
         }
 
         // 2. Crear y configurar el nuevo Usuario
@@ -72,15 +70,14 @@ public class ServicioAutenticacion implements UserDetailsService {
         usuario.setUsername(solicitud.getUsername());
         usuario.setEmail(solicitud.getEmail());
         usuario.setFullName(solicitud.getFullName());
-        // ENCRIPTAR CONTRASEÑA
+
+        // Encriptar la contraseña antes de guardarla en la base de datos
         usuario.setPassword(codificadorContrasena.encode(solicitud.getPassword()));
 
         // 3. Asignar Rol por defecto (CLIENTE)
-        // Usamos la cadena de texto como acordamos, ya que no usamos RolEnum.
-        final String NOMBRE_ROL_CLIENTE = "ROLE_CLIENT";
-
+        final String NOMBRE_ROL_CLIENTE = "ROLE_CLIENT"; // El nombre del rol de CLIENTE
         Rol rolCliente = repositorioRol.findByName(NOMBRE_ROL_CLIENTE)
-                .orElseThrow(() -> new RuntimeException("Error: Rol de CLIENTE no encontrado."));
+                .orElseThrow(() -> new RuntimeException("Error: El rol de CLIENTE no fue encontrado en la base de datos."));
 
         Set<Rol> roles = new HashSet<>();
         roles.add(rolCliente);
@@ -94,13 +91,13 @@ public class ServicioAutenticacion implements UserDetailsService {
      * Procesa la solicitud de login y genera un token JWT.
      */
     public String autenticarYGenerarToken(SolicitudLogin solicitud) {
-        // 1. Autenticar usando Spring Security
+        // 1. Autenticar al usuario utilizando el AuthenticationManager de Spring Security
         Authentication authentication = administradorAutenticacion.authenticate(
                 new UsernamePasswordAuthenticationToken(solicitud.getUsername(), solicitud.getPassword())
         );
 
-        // 2. Si la autenticación es exitosa, generar el token
+        // 2. Si la autenticación es exitosa, generar el token JWT
         UserDetails detallesUsuario = (UserDetails) authentication.getPrincipal();
-        return utilidadJwt.generarToken(detallesUsuario);
+        return utilidadJwt.generarToken(detallesUsuario); // Generar el token JWT para el usuario autenticado
     }
 }

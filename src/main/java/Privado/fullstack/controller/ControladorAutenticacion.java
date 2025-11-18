@@ -47,7 +47,7 @@ public class ControladorAutenticacion {
 
         // 3. Obtener el rol principal (usaremos el primero que encontremos, asumiendo un rol por usuario)
         String rolPrincipal = usuario.getRoles().stream()
-                .map(rol -> rol.getName().name())
+                .map(rol -> rol.getName())  // No necesitamos llamar a .name() aquí
                 .collect(Collectors.joining(",")); // Si tiene múltiples roles, los une con coma
 
         // 4. Construir la respuesta para el Frontend
