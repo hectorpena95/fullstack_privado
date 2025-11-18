@@ -1,3 +1,4 @@
+// Privado.fullstack.repository.RepositorioRol.java
 
 package Privado.fullstack.repository;
 
@@ -11,12 +12,10 @@ import java.util.Optional;
 public interface RepositorioRol extends JpaRepository<Rol, Long> {
 
     /**
-     * Busca un Rol por su nombre. 
-     * Este método es vital para:
-     * 1. El Inicializador de Datos (al inicio de la aplicación).
-     * 2. El Servicio de Autenticación (al asignar el rol por defecto 'CLIENT').
-     * @param name El nombre del rol (e.g., "ROLE_CLIENT").
-     * @return Un Optional que contiene el Rol si existe.
+     * Método personalizado para buscar un Rol por su nombre.
+     * Es crucial para la inicialización y asignación de roles de usuario.
+     * @param name El nombre del rol (String), ej. "ROLE_CLIENT".
+     * @return El Rol encontrado en un Optional.
      */
     Optional<Rol> findByName(String name);
 }

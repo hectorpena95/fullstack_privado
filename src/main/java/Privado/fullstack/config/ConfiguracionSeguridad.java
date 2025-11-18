@@ -1,7 +1,8 @@
+
 package Privado.fullstack.config;
 
+import Privado.fullstack.service.ServicioAutenticacion;
 
-import Privado.fullstack.service.ServicioDetallesUsuario; // Usamos el nombre en español
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,15 +16,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-@EnableWebSecurity // Habilita la seguridad web
-@EnableMethodSecurity // Permite usar @PreAuthorize en métodos
+@EnableWebSecurity
+@EnableMethodSecurity
 public class ConfiguracionSeguridad {
 
-    // Inyectamos el servicio de detalles de usuario
-    private final ServicioDetallesUsuario servicioDetallesUsuario;
+    // 2. CORRECCIÓN: Inyectamos ServicioAutenticacion
+    private final ServicioAutenticacion servicioAutenticacion;
 
-    public ConfiguracionSeguridad(ServicioDetallesUsuario servicioDetallesUsuario) {
-        this.servicioDetallesUsuario = servicioDetallesUsuario;
+    public ConfiguracionSeguridad(ServicioAutenticacion servicioAutenticacion) { // 3. CORRECCIÓN: Constructor
+        this.servicioAutenticacion = servicioAutenticacion;
     }
 
     // Bean para el encriptador de contraseñas (BCrypt)
@@ -42,7 +43,7 @@ public class ConfiguracionSeguridad {
     @Bean
     public SecurityFilterChain cadenaFiltrosSeguridad(HttpSecurity http) throws Exception {
         http
-                // Deshabilita CSRF (típico para APIs REST sin sesiones basadas en cookies)
+                // Deshabilita CSRF
                 .csrf(csrf -> csrf.disable())
 
                 // Configura la gestión de sesiones: sin estado (STATELESS) para JWT
@@ -57,17 +58,19 @@ public class ConfiguracionSeguridad {
                         .requestMatchers("/api/v1/auth/**").permitAll() // Login y Registro
                         .requestMatchers("/api/v1/productos/**").permitAll() // Catálogo público (lectura)
 
-                        // 2. Rutas de Vendedor (ADMIN y VENDOR)
-                        .requestMatchers("/api/v1/pedidos/**").hasAnyRole("ADMIN", "VENDOR") // Ver pedidos
+                        // 2. Rutas de Cliente (ej: crear pedido, ver sus pedidos)
+                        // NOTA: Debes cambiar la regla aquí si quieres que el CLIENTE pueda ver sus pedidos.
+                        // Para pruebas iniciales, lo dejamos así.
+                        .requestMatchers("/api/v1/pedidos/**").hasAnyRole("ADMIN", "VENDOR", "CLIENT")
 
                         // 3. Rutas de Administración (Solo ADMIN)
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN") // Rutas de gestión de usuarios/roles/stock
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
                         // 4. Las demás rutas deben ser autenticadas
                         .anyRequest().authenticated()
                 );
 
-        // NOTA: Más adelante, añadiremos el JwtRequestFilter aquí.
+        // NOTA: Falta añadir el FiltroSolicitudJwt aquí.
 
         return http.build();
     }

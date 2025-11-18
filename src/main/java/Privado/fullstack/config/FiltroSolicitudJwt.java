@@ -1,6 +1,7 @@
 package Privado.fullstack.config;
 
-import Privado.fullstack.service.ServicioDetallesUsuario;
+import Privado.fullstack.service.ServicioAutenticacion;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,11 +19,13 @@ import java.io.IOException;
 public class FiltroSolicitudJwt extends OncePerRequestFilter {
 
     private final UtilidadJwt utilidadJwt;
-    private final ServicioDetallesUsuario servicioDetallesUsuario;
+    // CORRECCIÓN 2: Usar ServicioAutenticacion
+    private final ServicioAutenticacion servicioAutenticacion;
 
-    public FiltroSolicitudJwt(UtilidadJwt utilidadJwt, ServicioDetallesUsuario servicioDetallesUsuario) {
+    // Constructor con Inyección de Dependencias
+    public FiltroSolicitudJwt(UtilidadJwt utilidadJwt, ServicioAutenticacion servicioAutenticacion) {
         this.utilidadJwt = utilidadJwt;
-        this.servicioDetallesUsuario = servicioDetallesUsuario;
+        this.servicioAutenticacion = servicioAutenticacion; // Inyectar el servicio de autenticación
     }
 
     @Override
@@ -33,34 +36,32 @@ public class FiltroSolicitudJwt extends OncePerRequestFilter {
         String username = null;
         String tokenJwt = null;
 
-        // 1. Verificar y extraer el token JWT (debe empezar con "Bearer ")
+        // 1. Verificar y extraer el token JWT
         if (encabezadoAutorizacion != null && encabezadoAutorizacion.startsWith("Bearer ")) {
             tokenJwt = encabezadoAutorizacion.substring(7);
             username = utilidadJwt.extraerUsername(tokenJwt);
         }
 
-        // 2. Si el username es válido y no está autenticado actualmente
+        // 2. Si el username es válido y no está autenticado
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            // Cargar los detalles del usuario
-            UserDetails detallesUsuario = this.servicioDetallesUsuario.loadUserByUsername(username);
+            // CORRECCIÓN 3: El ServicioAutenticacion debe implementar UserDetailsService,
+            // y por lo tanto, debe tener el método loadUserByUsername().
+            UserDetails detallesUsuario = this.servicioAutenticacion.loadUserByUsername(username);
 
             // 3. Validar el token
             if (utilidadJwt.validarToken(tokenJwt, detallesUsuario)) {
 
-                // Si es válido, crear un objeto de autenticación
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         detallesUsuario, null, detallesUsuario.getAuthorities());
 
-                // Asignar los detalles de la solicitud (IP, sesión, etc.)
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                // 4. Establecer la autenticación en el contexto de seguridad
+                // 4. Establecer la autenticación
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
 
-        // Continuar con el siguiente filtro en la cadena
         filterChain.doFilter(request, response);
     }
 }

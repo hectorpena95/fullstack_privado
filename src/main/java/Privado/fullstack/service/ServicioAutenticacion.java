@@ -1,18 +1,18 @@
 package Privado.fullstack.service;
 
-
 import Privado.fullstack.config.UtilidadJwt;
 import Privado.fullstack.model.dto.SolicitudLogin;
 import Privado.fullstack.model.SolicitudRegistro;
 import Privado.fullstack.model.entity.Rol;
 import Privado.fullstack.model.entity.Usuario;
-import Privado.fullstack.model.enums.RolEnum;
 import Privado.fullstack.repository.RepositorioRol;
 import Privado.fullstack.repository.RepositorioUsuario;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService; // ¡Nuevo Import!
+import org.springframework.security.core.userdetails.UsernameNotFoundException; // ¡Nuevo Import!
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +21,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Service
-public class ServicioAutenticacion {
+// Implementar la interfaz UserDetailsService
+public class ServicioAutenticacion implements UserDetailsService {
 
     private final RepositorioUsuario repositorioUsuario;
     private final RepositorioRol repositorioRol;
@@ -39,6 +40,19 @@ public class ServicioAutenticacion {
         this.administradorAutenticacion = administradorAutenticacion;
         this.utilidadJwt = utilidadJwt;
     }
+
+    /**
+     * MÉTODO REQUERIDO por UserDetailsService
+     * Carga el usuario de la base de datos por el nombre de usuario.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        // Retorna la entidad Usuario (que implementa UserDetails)
+        return repositorioUsuario.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
+    }
+
 
     /**
      * Registra un nuevo Usuario y le asigna el rol por defecto (CLIENTE).
@@ -62,7 +76,10 @@ public class ServicioAutenticacion {
         usuario.setPassword(codificadorContrasena.encode(solicitud.getPassword()));
 
         // 3. Asignar Rol por defecto (CLIENTE)
-        Rol rolCliente = repositorioRol.findByName(RolEnum.ROLE_CLIENT)
+        // Usamos la cadena de texto como acordamos, ya que no usamos RolEnum.
+        final String NOMBRE_ROL_CLIENTE = "ROLE_CLIENT";
+
+        Rol rolCliente = repositorioRol.findByName(NOMBRE_ROL_CLIENTE)
                 .orElseThrow(() -> new RuntimeException("Error: Rol de CLIENTE no encontrado."));
 
         Set<Rol> roles = new HashSet<>();

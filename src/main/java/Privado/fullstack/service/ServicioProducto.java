@@ -1,3 +1,4 @@
+// Privado.fullstack.service.ServicioProducto.java
 
 package Privado.fullstack.service;
 
@@ -18,57 +19,51 @@ public class ServicioProducto {
         this.repositorioProducto = repositorioProducto;
     }
 
-    // --- Métodos de Lectura (Catálogo Público) ---
+    // --- Métodos de Lectura (Usados por el ControladorProducto y ServicioPedido) ---
 
-    // Obtener todos los productos
     @Transactional(readOnly = true)
     public List<Producto> obtenerTodos() {
         return repositorioProducto.findAll();
     }
 
-    // Obtener un producto por ID
     @Transactional(readOnly = true)
     public Optional<Producto> obtenerPorId(Long id) {
+        // Usado por ServicioPedido para verificar la existencia y obtener el precio/stock.
         return repositorioProducto.findById(id);
     }
 
-    // Buscar productos por nombre o categoría (puedes expandir esta lógica)
-    @Transactional(readOnly = true)
-    public List<Producto> buscarProductos(String termino) {
-        if (termino == null || termino.trim().isEmpty()) {
-            return obtenerTodos();
-        }
-        // Utiliza el método personalizado del repositorio
-        return repositorioProducto.findByNombreContainingIgnoreCase(termino);
-    }
+    // --- Métodos de Escritura (Usados por el ControladorProducto y ServicioPedido) ---
 
-    // --- Métodos de Gestión (Solo para ADMIN) ---
-
-    // Crear o Actualizar un producto
     @Transactional
     public Producto guardarProducto(Producto producto) {
-        // Validación de stock (asegurar que no sea negativo al crear/actualizar)
+        // Usado para crear (POST) o actualizar (PUT) productos.
         if (producto.getStock() < 0) {
             throw new IllegalArgumentException("El stock no puede ser negativo.");
         }
         return repositorioProducto.save(producto);
     }
 
-    // Eliminar un producto
     @Transactional
     public void eliminarProducto(Long id) {
         repositorioProducto.deleteById(id);
     }
 
-    // Lógica para actualizar el stock después de un pedido
+    /**
+     * Lógica crítica: Reduce el stock después de una compra exitosa.
+     * @param productoId ID del producto comprado.
+     * @param cantidadVendida La cantidad a restar del stock.
+     */
     @Transactional
-    public void actualizarStock(Long idProducto, int cantidadVendida) {
-        Producto producto = repositorioProducto.findById(idProducto)
+    public void actualizarStock(Long productoId, int cantidadVendida) {
+        Producto producto = repositorioProducto.findById(productoId)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado para actualizar stock."));
 
         int nuevoStock = producto.getStock() - cantidadVendida;
+
         if (nuevoStock < 0) {
-            throw new IllegalArgumentException("Stock insuficiente para la venta.");
+            // Este error ya debería ser capturado antes en ServicioPedido,
+            // pero es una validación de seguridad extra.
+            throw new RuntimeException("Error fatal: Intento de stock negativo.");
         }
 
         producto.setStock(nuevoStock);
