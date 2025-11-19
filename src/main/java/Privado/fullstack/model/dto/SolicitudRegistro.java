@@ -1,11 +1,11 @@
-package Privado.fullstack.model;
+package Privado.fullstack.model.dto;
 
 import lombok.Data;
 
 @Data
 public class SolicitudRegistro {
-    private String username;
+
+    private String nombre;
     private String email;
     private String password;
-    private String fullName; // Nombre completo opcional
 }

@@ -32,8 +32,6 @@ public class Usuario implements UserDetails {
     @Column(nullable = false, unique = true)
     private String email;
 
-    private String fullName;
-
     // Relación Muchos a Muchos con Roles
     @ManyToMany(fetch = FetchType.EAGER) // Carga los roles inmediatamente
     @JoinTable(

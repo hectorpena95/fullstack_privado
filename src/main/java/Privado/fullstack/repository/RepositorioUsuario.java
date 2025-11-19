@@ -10,14 +10,20 @@ import java.util.Optional;
 public interface RepositorioUsuario extends JpaRepository<Usuario, Long> {
 
     /**
-     * Requerido por ServicioAutenticacion.loadUserByUsername() y login.
-     * Busca un usuario por su nombre de usuario.
+     * Requerido por ServicioAutenticacion.loadUserByUsername() y la lógica de login.
+     * Busca un usuario por su email.
+     */
+    Optional<Usuario> findByEmail(String email);
+
+    /**
+     * Busca un usuario por su nombre de usuario (el campo 'nombre' del DTO en la BD).
+     * No es usado en el login actual, pero es estándar para búsquedas.
      */
     Optional<Usuario> findByUsername(String username);
 
     /**
      * Requerido por ServicioAutenticacion.registrarNuevoUsuario() para validación.
-     * Verifica si un nombre de usuario ya existe.
+     * Verifica si un nombre de usuario (el 'nombre' del DTO) ya existe.
      */
     Boolean existsByUsername(String username);
 

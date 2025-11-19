@@ -8,5 +8,4 @@ public class RespuestaLogin {
     private String tipo = "Bearer";
     private String username;
     private String rol;
-    // Puedes añadir más detalles como userId o fullName
 }
