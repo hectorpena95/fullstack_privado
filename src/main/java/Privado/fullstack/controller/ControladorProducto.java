@@ -1,4 +1,3 @@
-
 package Privado.fullstack.controller;
 
 import Privado.fullstack.model.entity.Producto;
@@ -20,47 +19,37 @@ public class ControladorProducto {
         this.servicioProducto = servicioProducto;
     }
 
-    // --- ENDPOINTS PÚBLICOS (Catálogo) ---
+    // --- ENDPOINTS PÚBLICOS ---
 
-    // GET /api/v1/productos (Listar todos)
     @GetMapping
     public ResponseEntity<List<Producto>> listarTodos() {
         List<Producto> productos = servicioProducto.obtenerTodos();
         return ResponseEntity.ok(productos);
     }
 
-    // GET /api/v1/productos/{id} (Ver detalle)
     @GetMapping("/{id}")
     public ResponseEntity<Producto> obtenerDetalle(@PathVariable Long id) {
-        // CORRECCIÓN: Usamos ResponseEntity.of() para manejar el Optional de manera limpia.
-        // Devuelve 200 OK si el Optional tiene valor, 404 NOT FOUND si está vacío.
         return ResponseEntity.of(servicioProducto.obtenerPorId(id));
     }
 
-    // --- ENDPOINTS PROTEGIDOS (Gestión - ADMIN/VENDOR) ---
+    // --- ENDPOINTS SOLO ADMIN ---
 
-    // POST /api/v1/productos (Crear nuevo producto)
-    // Permite a ADMIN y VENDOR crear productos.
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<Producto> crearProducto(@RequestBody Producto producto) {
         try {
             Producto nuevoProducto = servicioProducto.guardarProducto(producto);
             return new ResponseEntity<>(nuevoProducto, HttpStatus.CREATED);
         } catch (IllegalArgumentException e) {
-            // Error si el stock es negativo, por ejemplo.
             return ResponseEntity.badRequest().build();
         }
     }
 
-    // PUT /api/v1/productos/{id} (Actualizar producto existente)
-    // Permite a ADMIN y VENDOR actualizar.
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<?> actualizarProducto(@PathVariable Long id, @RequestBody Producto producto) {
         return servicioProducto.obtenerPorId(id)
                 .map(productoExistente -> {
-                    // Actualización de campos
                     productoExistente.setNombre(producto.getNombre());
                     productoExistente.setDescripcion(producto.getDescripcion());
                     productoExistente.setPrecio(producto.getPrecio());
@@ -74,12 +63,9 @@ public class ControladorProducto {
                         return ResponseEntity.badRequest().build();
                     }
                 })
-                // CORRECCIÓN: Usamos orElseGet para manejar el 404 y devolver el tipo correcto.
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // DELETE /api/v1/productos/{id} (Eliminar producto)
-    // Solo ADMIN puede eliminar (por precaución).
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarProducto(@PathVariable Long id) {

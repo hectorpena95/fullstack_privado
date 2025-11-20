@@ -18,11 +18,11 @@ import java.util.stream.Collectors;
 public class ControladorAutenticacion {
 
     private final ServicioAutenticacion servicioAutenticacion;
-    private final AuthenticationManager administradorAutenticacion; // 🔑 CORRECCIÓN 1: Inyección del Manager
+    private final AuthenticationManager administradorAutenticacion;
 
     // Constructor con Inyección de Dependencias
     public ControladorAutenticacion(ServicioAutenticacion servicioAutenticacion,
-                                    AuthenticationManager administradorAutenticacion) { // 🔑 CORRECCIÓN 2: Recibir el Manager
+                                    AuthenticationManager administradorAutenticacion) {
         this.servicioAutenticacion = servicioAutenticacion;
         this.administradorAutenticacion = administradorAutenticacion;
     }
