@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 
 import org.springframework.stereotype.Component;
@@ -38,6 +37,7 @@ public class FiltroSolicitudJwt extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
+        // Saltar endpoints de autenticación
         if (request.getRequestURI().contains("/api/v1/auth/")) {
             filterChain.doFilter(request, response);
             return;
@@ -49,7 +49,6 @@ public class FiltroSolicitudJwt extends OncePerRequestFilter {
 
         if (headerAuth != null && headerAuth.startsWith("Bearer ")) {
             tokenJwt = headerAuth.substring(7);
-
             try {
                 username = utilidadJwt.extraerUsername(tokenJwt);
             } catch (Exception e) {
@@ -59,29 +58,27 @@ public class FiltroSolicitudJwt extends OncePerRequestFilter {
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            UserDetails userDetails = servicioAutenticacion.loadUserByUsername(username);
+            // ✅ CORREGIDO: validar token SIN userDetails
+            if (utilidadJwt.validarToken(tokenJwt)) {
 
-            if (utilidadJwt.validarToken(tokenJwt, userDetails)) {
-
-                // 👉 EXTRAER ROLES DEL TOKEN
+                // EXTRAER ROLES DEL TOKEN
                 List<String> roles = utilidadJwt.extraerClaim(tokenJwt, claims ->
                         (List<String>) claims.get("roles")
                 );
 
-                // Convertirlos a SimpleGrantedAuthority
+                // Convertir roles ("ADMIN") a "ROLE_ADMIN"
                 var authorities = roles.stream()
-                        .map(SimpleGrantedAuthority::new)
+                        .map(rol -> new SimpleGrantedAuthority("ROLE_" + rol))
                         .collect(Collectors.toList());
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
-                                userDetails,
+                                username,
                                 null,
                                 authorities
                         );
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         }

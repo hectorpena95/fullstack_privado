@@ -41,7 +41,7 @@ public class ConfiguracionSeguridad {
 
                         // Solo ADMIN
                         .requestMatchers("/api/v1/productos/**")
-                        .hasRole("ADMIN")
+                        .hasRole("ADMIN")  // ← CORRECTO
 
                         .anyRequest().authenticated()
                 )

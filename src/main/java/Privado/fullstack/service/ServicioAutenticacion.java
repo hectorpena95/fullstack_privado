@@ -8,6 +8,7 @@ import Privado.fullstack.model.entity.Rol;
 import Privado.fullstack.model.entity.Usuario;
 import Privado.fullstack.repository.RepositorioRol;
 import Privado.fullstack.repository.RepositorioUsuario;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -15,6 +16,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,24 +27,26 @@ import java.util.stream.Collectors;
 @Service
 public class ServicioAutenticacion implements UserDetailsService {
 
-    public final RepositorioUsuario repositorioUsuario;
+    private final RepositorioUsuario repositorioUsuario;
     private final RepositorioRol repositorioRol;
     private final PasswordEncoder codificadorContrasena;
     private final UtilidadJwt utilidadJwt;
 
-    // El constructor NO inyecta AuthenticationManager, rompiendo el ciclo.
-    public ServicioAutenticacion(RepositorioUsuario repositorioUsuario, RepositorioRol repositorioRol,
-                                 PasswordEncoder codificadorContrasena,
-                                 UtilidadJwt utilidadJwt) {
+    public ServicioAutenticacion(
+            RepositorioUsuario repositorioUsuario,
+            RepositorioRol repositorioRol,
+            PasswordEncoder codificadorContrasena,
+            UtilidadJwt utilidadJwt) {
+
         this.repositorioUsuario = repositorioUsuario;
         this.repositorioRol = repositorioRol;
         this.codificadorContrasena = codificadorContrasena;
         this.utilidadJwt = utilidadJwt;
     }
 
-    /**
-     * Carga el usuario desde la base de datos por el email.
-     */
+    // ==========================
+    //  CARGAR USUARIO POR EMAIL
+    // ==========================
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -50,9 +54,9 @@ public class ServicioAutenticacion implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con el email: " + email));
     }
 
-    /**
-     * Registra un nuevo Usuario y le asigna el rol por defecto (CLIENTE).
-     */
+    // ==========================
+    //   REGISTRO DE USUARIO
+    // ==========================
     @Transactional
     public Usuario registrarNuevoUsuario(SolicitudRegistro solicitud) {
 
@@ -70,7 +74,7 @@ public class ServicioAutenticacion implements UserDetailsService {
 
         final String NOMBRE_ROL_CLIENTE = "ROLE_CLIENT";
         Rol rolCliente = repositorioRol.findByName(NOMBRE_ROL_CLIENTE)
-                .orElseThrow(() -> new RuntimeException("Error: El rol de CLIENTE no fue encontrado en la base de datos."));
+                .orElseThrow(() -> new RuntimeException("Error: El rol de CLIENTE no fue encontrado."));
 
         Set<Rol> roles = new HashSet<>();
         roles.add(rolCliente);
@@ -79,35 +83,40 @@ public class ServicioAutenticacion implements UserDetailsService {
         return repositorioUsuario.save(usuario);
     }
 
-    /**
-     * Procesa la solicitud de login y genera un token JWT.
-     * @param administradorAutenticacion Inyectado en el controlador y pasado aquí.
-     */
+    // ==========================
+    //   AUTENTICAR & GENERAR TOKEN
+    // ==========================
     public String autenticarYGenerarToken(SolicitudLogin solicitud, AuthenticationManager administradorAutenticacion) {
-        // 1. Autenticar al usuario utilizando el email (como identificador) y la contraseña.
+
+        // Autenticación con email + password
         Authentication authentication = administradorAutenticacion.authenticate(
-                new UsernamePasswordAuthenticationToken(solicitud.getEmail(), solicitud.getPassword())
+                new UsernamePasswordAuthenticationToken(
+                        solicitud.getEmail(),
+                        solicitud.getPassword()
+                )
         );
 
-        // 2. Si la autenticación es exitosa, generar el token JWT
+        // Usuario autenticado (UserDetails de Spring Security)
         UserDetails detallesUsuario = (UserDetails) authentication.getPrincipal();
+
+        // Generar token JWT correcto
         return utilidadJwt.generarToken(detallesUsuario);
     }
 
-    /**
-     * Crea el DTO de respuesta para el Controlador.
-     */
-    public RespuestaLogin crearRespuestaLogin(Usuario usuario) {
+    // ==========================
+    //   DTO DE RESPUESTA LOGIN
+    // ==========================
+    public RespuestaLogin crearRespuestaLogin(UserDetails userDetails) {
 
-        String tokenJwt = utilidadJwt.generarToken(usuario);
+        String tokenJwt = utilidadJwt.generarToken(userDetails);
 
-        String rolPrincipal = usuario.getRoles().stream()
-                .map(Rol::getName)
+        String rolPrincipal = userDetails.getAuthorities().stream()
+                .map(a -> a.getAuthority().replace("ROLE_", ""))
                 .collect(Collectors.joining(","));
 
         RespuestaLogin respuesta = new RespuestaLogin();
         respuesta.setToken(tokenJwt);
-        respuesta.setUsername(usuario.getUsername());
+        respuesta.setUsername(userDetails.getUsername());
         respuesta.setRol(rolPrincipal);
 
         return respuesta;

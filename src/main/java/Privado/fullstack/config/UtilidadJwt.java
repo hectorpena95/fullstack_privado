@@ -8,7 +8,6 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -30,20 +29,27 @@ public class UtilidadJwt {
         return extraerClaim(token, Claims::getSubject);
     }
 
-    public String generarToken(UserDetails userDetails) {
+    // ✅ CORREGIDO: ahora no depende de UserDetails
+    public Boolean validarToken(String token) {
+        return !esTokenExpirado(token);
+    }
+
+    // Generar token con roles sin prefijo ROLE_
+    public String generarToken(org.springframework.security.core.userdetails.UserDetails userDetails) {
+
         Map<String, Object> claims = new HashMap<>();
+
         claims.put("roles", userDetails.getAuthorities()
                 .stream()
-                .map(a -> a.getAuthority())
+                .map(a -> a.getAuthority().replace("ROLE_", "")) // ADMIN
                 .toList()
         );
 
         return crearToken(claims, userDetails.getUsername());
     }
 
-    public Boolean validarToken(String token, UserDetails userDetails) {
-        String username = extraerUsername(token);
-        return username.equals(userDetails.getUsername()) && !esTokenExpirado(token);
+    private Boolean esTokenExpirado(String token) {
+        return extraerClaim(token, Claims::getExpiration).before(new Date());
     }
 
     private String crearToken(Map<String, Object> claims, String subject) {
@@ -66,10 +72,6 @@ public class UtilidadJwt {
 
     public <T> T extraerClaim(String token, Function<Claims, T> resolver) {
         return resolver.apply(extraerTodasLasClaims(token));
-    }
-
-    private boolean esTokenExpirado(String token) {
-        return extraerClaim(token, Claims::getExpiration).before(new Date());
     }
 
     private SecretKey getSigningKey() {
