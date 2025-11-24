@@ -48,7 +48,7 @@ public class FiltroSolicitudJwt extends OncePerRequestFilter {
         String tokenJwt = null;
 
         if (headerAuth != null && headerAuth.startsWith("Bearer ")) {
-            tokenJwt = headerAuth.substring(7);
+            tokenJwt = headerAuth.substring(7); // quita "Bearer "
             try {
                 username = utilidadJwt.extraerUsername(tokenJwt);
             } catch (Exception e) {
@@ -56,9 +56,10 @@ public class FiltroSolicitudJwt extends OncePerRequestFilter {
             }
         }
 
+        // Validar sin authentication previa
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            // ✅ CORREGIDO: validar token SIN userDetails
+            // Validar token JWT
             if (utilidadJwt.validarToken(tokenJwt)) {
 
                 // EXTRAER ROLES DEL TOKEN
@@ -66,9 +67,8 @@ public class FiltroSolicitudJwt extends OncePerRequestFilter {
                         (List<String>) claims.get("roles")
                 );
 
-                // Convertir roles ("ADMIN") a "ROLE_ADMIN"
                 var authorities = roles.stream()
-                        .map(rol -> new SimpleGrantedAuthority("ROLE_" + rol))
+                        .map(SimpleGrantedAuthority::new)
                         .collect(Collectors.toList());
 
                 UsernamePasswordAuthenticationToken authentication =
@@ -78,7 +78,10 @@ public class FiltroSolicitudJwt extends OncePerRequestFilter {
                                 authorities
                         );
 
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                authentication.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
+
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         }

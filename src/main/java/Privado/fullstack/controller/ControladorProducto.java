@@ -2,6 +2,7 @@ package Privado.fullstack.controller;
 
 import Privado.fullstack.model.entity.Producto;
 import Privado.fullstack.service.ServicioProducto;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -11,7 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/productos")
-@CrossOrigin(origins = "http://localhost:5173") // 👈 HABILITAR CORS PARA REACT
+@CrossOrigin(origins = "http://localhost:5173")
 public class ControladorProducto {
 
     private final ServicioProducto servicioProducto;
@@ -20,10 +21,9 @@ public class ControladorProducto {
         this.servicioProducto = servicioProducto;
     }
 
-    // ============================
-    // 🚀 ENDPOINTS PÚBLICOS (sin JWT)
-    // ============================
-
+    // =========================================================
+    // 🚀 ENDPOINTS PÚBLICOS
+    // =========================================================
     @GetMapping
     public ResponseEntity<List<Producto>> listarTodos() {
         return ResponseEntity.ok(servicioProducto.obtenerTodos());
@@ -34,10 +34,12 @@ public class ControladorProducto {
         return ResponseEntity.of(servicioProducto.obtenerPorId(id));
     }
 
-    // ============================
-    // 🔐 ENDPOINTS SOLO ADMIN
-    // ============================
+    // =========================================================
+    // 🔐 ENDPOINTS PRIVADOS (ADMIN)
+    // Swagger necesita @SecurityRequirement aquí
+    // =========================================================
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<Producto> crearProducto(@RequestBody Producto producto) {
@@ -49,6 +51,7 @@ public class ControladorProducto {
         }
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<?> actualizarProducto(@PathVariable Long id, @RequestBody Producto producto) {
@@ -66,6 +69,7 @@ public class ControladorProducto {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarProducto(@PathVariable Long id) {

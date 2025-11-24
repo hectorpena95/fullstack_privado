@@ -66,15 +66,14 @@ public class ConfiguracionSeguridad {
                         // =============================
                         // 🔐 ENDPOINTS SOLO ADMIN — Productos
                         // =============================
-                        .requestMatchers(HttpMethod.POST, "/api/v1/productos/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/productos/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/productos/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/productos/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/productos/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/productos/**").hasAuthority("ROLE_ADMIN")
 
                         // =============================
                         // 🔐 ENDPOINTS ADMIN GENERALES
-                        // (usuarios, pedidos, dashboard)
                         // =============================
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")
 
                         // =============================
                         // 🔐 DEMÁS ENDPOINTS → autenticados
