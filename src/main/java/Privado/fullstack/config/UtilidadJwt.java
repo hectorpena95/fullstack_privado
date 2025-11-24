@@ -29,19 +29,18 @@ public class UtilidadJwt {
         return extraerClaim(token, Claims::getSubject);
     }
 
-    // ✅ CORREGIDO: ahora no depende de UserDetails
     public Boolean validarToken(String token) {
         return !esTokenExpirado(token);
     }
 
-    // Generar token con roles sin prefijo ROLE_
+    // 🔥 CORREGIDO: YA NO QUITA "ROLE_"
     public String generarToken(org.springframework.security.core.userdetails.UserDetails userDetails) {
 
         Map<String, Object> claims = new HashMap<>();
 
         claims.put("roles", userDetails.getAuthorities()
                 .stream()
-                .map(a -> a.getAuthority().replace("ROLE_", "")) // ADMIN
+                .map(a -> a.getAuthority()) // ROLE_ADMIN
                 .toList()
         );
 

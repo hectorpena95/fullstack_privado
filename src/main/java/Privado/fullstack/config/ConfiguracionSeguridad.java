@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import org.springframework.http.HttpMethod;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 
@@ -18,6 +20,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import org.springframework.web.cors.CorsConfiguration;
+
+import java.util.List;
+
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true)
 public class ConfiguracionSeguridad {
@@ -29,9 +35,21 @@ public class ConfiguracionSeguridad {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
+                .cors(cors -> cors.configurationSource(request -> {
+                    CorsConfiguration config = new CorsConfiguration();
+                    config.setAllowedOrigins(List.of("http://localhost:5173"));
+                    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                    config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+                    config.setAllowCredentials(true);
+                    return config;
+                }))
                 .csrf(csrf -> csrf.disable())
 
                 .authorizeHttpRequests(auth -> auth
+
+                        // =============================
+                        // 🔓 ENDPOINTS PÚBLICOS
+                        // =============================
                         .requestMatchers(
                                 "/api/v1/auth/**",
                                 "/v3/api-docs/**",
@@ -39,10 +57,28 @@ public class ConfiguracionSeguridad {
                                 "/swagger-ui.html"
                         ).permitAll()
 
-                        // Solo ADMIN
-                        .requestMatchers("/api/v1/productos/**")
-                        .hasRole("ADMIN")  // ← CORRECTO
+                        // =============================
+                        // 🟢 GET — Catálogo público
+                        // =============================
+                        .requestMatchers(HttpMethod.GET, "/api/v1/productos/**")
+                        .permitAll()
 
+                        // =============================
+                        // 🔐 ENDPOINTS SOLO ADMIN — Productos
+                        // =============================
+                        .requestMatchers(HttpMethod.POST, "/api/v1/productos/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/productos/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/productos/**").hasRole("ADMIN")
+
+                        // =============================
+                        // 🔐 ENDPOINTS ADMIN GENERALES
+                        // (usuarios, pedidos, dashboard)
+                        // =============================
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+
+                        // =============================
+                        // 🔐 DEMÁS ENDPOINTS → autenticados
+                        // =============================
                         .anyRequest().authenticated()
                 )
 

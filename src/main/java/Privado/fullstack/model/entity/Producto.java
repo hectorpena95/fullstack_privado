@@ -1,4 +1,3 @@
-
 package Privado.fullstack.model.entity;
 
 import jakarta.persistence.*;
@@ -9,8 +8,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "productos")
-@Data // Genera getters, setters, equals, hashCode y toString (Lombok)
-@NoArgsConstructor // Constructor sin argumentos (JPA)
+@Data
+@NoArgsConstructor
 public class Producto {
 
     @Id
@@ -24,23 +23,32 @@ public class Producto {
     private String descripcion;
 
     @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal precio; // Usar BigDecimal para precisión monetaria
+    private BigDecimal precio;
 
     @Column(nullable = false)
-    private Integer stock; // Cantidad disponible en inventario
+    private Integer stock;
 
-    private String urlImagen; // URL o path de la imagen del producto
+    private String urlImagen;
 
-    // Opcional: Puede ser útil para ordenar o filtrar
     private String categoria;
 
-    // Campos de auditoría simple
     private LocalDateTime fechaCreacion = LocalDateTime.now();
+
     private LocalDateTime fechaActualizacion;
 
-    // Antes de guardar (PERSIST) o actualizar (UPDATE), se ejecuta este método
     @PreUpdate
     protected void onUpdate() {
         this.fechaActualizacion = LocalDateTime.now();
+    }
+
+    // 🆕 Constructor para facilitar la carga automática del catálogo
+    public Producto(String nombre, String descripcion, BigDecimal precio, Integer stock,
+                    String urlImagen, String categoria) {
+        this.nombre = nombre;
+        this.descripcion = descripcion;
+        this.precio = precio;
+        this.stock = stock;
+        this.urlImagen = urlImagen;
+        this.categoria = categoria;
     }
 }

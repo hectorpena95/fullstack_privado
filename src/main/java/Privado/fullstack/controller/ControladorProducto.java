@@ -11,6 +11,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/productos")
+@CrossOrigin(origins = "http://localhost:5173") // 👈 HABILITAR CORS PARA REACT
 public class ControladorProducto {
 
     private final ServicioProducto servicioProducto;
@@ -19,12 +20,13 @@ public class ControladorProducto {
         this.servicioProducto = servicioProducto;
     }
 
-    // --- ENDPOINTS PÚBLICOS ---
+    // ============================
+    // 🚀 ENDPOINTS PÚBLICOS (sin JWT)
+    // ============================
 
     @GetMapping
     public ResponseEntity<List<Producto>> listarTodos() {
-        List<Producto> productos = servicioProducto.obtenerTodos();
-        return ResponseEntity.ok(productos);
+        return ResponseEntity.ok(servicioProducto.obtenerTodos());
     }
 
     @GetMapping("/{id}")
@@ -32,7 +34,9 @@ public class ControladorProducto {
         return ResponseEntity.of(servicioProducto.obtenerPorId(id));
     }
 
-    // --- ENDPOINTS SOLO ADMIN ---
+    // ============================
+    // 🔐 ENDPOINTS SOLO ADMIN
+    // ============================
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
@@ -49,19 +53,15 @@ public class ControladorProducto {
     @PutMapping("/{id}")
     public ResponseEntity<?> actualizarProducto(@PathVariable Long id, @RequestBody Producto producto) {
         return servicioProducto.obtenerPorId(id)
-                .map(productoExistente -> {
-                    productoExistente.setNombre(producto.getNombre());
-                    productoExistente.setDescripcion(producto.getDescripcion());
-                    productoExistente.setPrecio(producto.getPrecio());
-                    productoExistente.setStock(producto.getStock());
-                    productoExistente.setCategoria(producto.getCategoria());
+                .map(existente -> {
+                    existente.setNombre(producto.getNombre());
+                    existente.setDescripcion(producto.getDescripcion());
+                    existente.setPrecio(producto.getPrecio());
+                    existente.setStock(producto.getStock());
+                    existente.setCategoria(producto.getCategoria());
+                    existente.setUrlImagen(producto.getUrlImagen());
 
-                    try {
-                        Producto actualizado = servicioProducto.guardarProducto(productoExistente);
-                        return ResponseEntity.ok(actualizado);
-                    } catch (IllegalArgumentException e) {
-                        return ResponseEntity.badRequest().build();
-                    }
+                    return ResponseEntity.ok(servicioProducto.guardarProducto(existente));
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
