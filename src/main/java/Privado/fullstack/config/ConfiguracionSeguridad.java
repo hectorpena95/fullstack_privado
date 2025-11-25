@@ -37,19 +37,23 @@ public class ConfiguracionSeguridad {
         http
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
+
                     config.setAllowedOrigins(List.of("http://localhost:5173"));
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                    config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+
+                    // 🔥 FIX DEFINITIVO para DELETE bloqueado /error
+                    config.setAllowedHeaders(List.of("*"));
+                    config.setExposedHeaders(List.of("Authorization"));
+
                     config.setAllowCredentials(true);
+
                     return config;
                 }))
                 .csrf(csrf -> csrf.disable())
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // =============================
-                        // 🔓 ENDPOINTS PÚBLICOS
-                        // =============================
+                        // ENDPOINTS PÚBLICOS
                         .requestMatchers(
                                 "/api/v1/auth/**",
                                 "/v3/api-docs/**",
@@ -57,27 +61,21 @@ public class ConfiguracionSeguridad {
                                 "/swagger-ui.html"
                         ).permitAll()
 
-                        // =============================
-                        // 🟢 GET — Catálogo público
-                        // =============================
+                        // GET catálogo
                         .requestMatchers(HttpMethod.GET, "/api/v1/productos/**")
                         .permitAll()
 
-                        // =============================
-                        // 🔐 ENDPOINTS SOLO ADMIN — Productos
-                        // =============================
-                        .requestMatchers(HttpMethod.POST, "/api/v1/productos/**").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/productos/**").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/productos/**").hasAuthority("ROLE_ADMIN")
+                        // SOLO ADMIN
+                        .requestMatchers(HttpMethod.POST, "/api/v1/productos/**")
+                        .hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/productos/**")
+                        .hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/productos/**")
+                        .hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/v1/admin/**")
+                        .hasAuthority("ROLE_ADMIN")
 
-                        // =============================
-                        // 🔐 ENDPOINTS ADMIN GENERALES
-                        // =============================
-                        .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")
-
-                        // =============================
-                        // 🔐 DEMÁS ENDPOINTS → autenticados
-                        // =============================
+                        // RESTO AUTENTICADOS
                         .anyRequest().authenticated()
                 )
 
