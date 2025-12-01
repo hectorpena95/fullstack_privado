@@ -41,7 +41,6 @@ public class ConfiguracionSeguridad {
                     config.setAllowedOrigins(List.of("http://localhost:5173"));
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
-                    // 🔥 FIX DEFINITIVO para DELETE bloqueado /error
                     config.setAllowedHeaders(List.of("*"));
                     config.setExposedHeaders(List.of("Authorization"));
 
@@ -74,6 +73,9 @@ public class ConfiguracionSeguridad {
                         .hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/v1/admin/**")
                         .hasAuthority("ROLE_ADMIN")
+
+                        .requestMatchers("/api/privado/hola").hasRole("ADMIN")
+
 
                         // RESTO AUTENTICADOS
                         .anyRequest().authenticated()
