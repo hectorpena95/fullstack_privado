@@ -38,7 +38,12 @@ public class ConfiguracionSeguridad {
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
 
-                    config.setAllowedOrigins(List.of("http://localhost:5173"));
+                    config.setAllowedOrigins(List.of(
+                            "http://localhost:5173",
+                            "http://10.0.2.2:8080",
+                            "http://192.168.1.86:8080", // ← IP real tu computador
+                            "*"
+                    ));
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
                     config.setAllowedHeaders(List.of("*"));
@@ -57,7 +62,8 @@ public class ConfiguracionSeguridad {
                                 "/api/v1/auth/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html"
+                                "/swagger-ui.html",
+                                "/img/**"
                         ).permitAll()
 
                         // GET catálogo
