@@ -16,24 +16,24 @@ import java.util.stream.Collectors;
 @Table(name = "usuarios")
 @Data
 @NoArgsConstructor
-// ¡Clave! Implementa UserDetails para Spring Security
 public class Usuario implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Nombre visible en la plataforma
     @Column(nullable = false, unique = true)
     private String username;
 
     @Column(nullable = false)
     private String password;
 
+    // Email utilizado para login REAL
     @Column(nullable = false, unique = true)
     private String email;
 
-    // Relación Muchos a Muchos con Roles
-    @ManyToMany(fetch = FetchType.EAGER) // Carga los roles inmediatamente
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "usuario_roles",
             joinColumns = @JoinColumn(name = "usuario_id"),
@@ -41,13 +41,14 @@ public class Usuario implements UserDetails {
     )
     private Set<Rol> roles = new HashSet<>();
 
-    // --- Métodos de la Interfaz UserDetails ---
+    // ================================
+    // 🔐 MÉTODOS DE USERDETAILS
+    // ================================
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Mapea los objetos Rol a objetos SimpleGrantedAuthority (Spring requiere este formato)
         return this.roles.stream()
-                .map(rol -> new SimpleGrantedAuthority(rol.getName())) // Usamos getName() que retorna String (el nombre del rol)
+                .map(rol -> new SimpleGrantedAuthority(rol.getName()))
                 .collect(Collectors.toList());
     }
 
@@ -56,29 +57,25 @@ public class Usuario implements UserDetails {
         return this.password;
     }
 
+    /**
+     * ⚠ IMPORTANTE:
+     * Spring Security usa este método para autenticar.
+     * Tu login es por EMAIL → aquí devolvemos email.
+     */
     @Override
     public String getUsername() {
-        return this.username;
-    }
-
-    // Métodos de estado (se dejan en true por simplicidad)
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
+        return this.email;
     }
 
     @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
+    public boolean isAccountNonExpired() { return true; }
 
     @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
+    public boolean isAccountNonLocked() { return true; }
 
     @Override
-    public boolean isEnabled() {
-        return true;
-    }
+    public boolean isCredentialsNonExpired() { return true; }
+
+    @Override
+    public boolean isEnabled() { return true; }
 }

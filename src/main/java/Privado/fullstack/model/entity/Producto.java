@@ -32,23 +32,18 @@ public class Producto {
 
     private String categoria;
 
-    private LocalDateTime fechaCreacion = LocalDateTime.now();
+    private LocalDateTime fechaCreacion;
 
     private LocalDateTime fechaActualizacion;
+
+    @PrePersist
+    protected void onCreate() {
+        this.fechaCreacion = LocalDateTime.now();
+        this.fechaActualizacion = LocalDateTime.now();
+    }
 
     @PreUpdate
     protected void onUpdate() {
         this.fechaActualizacion = LocalDateTime.now();
-    }
-
-    // 🆕 Constructor para facilitar la carga automática del catálogo
-    public Producto(String nombre, String descripcion, BigDecimal precio, Integer stock,
-                    String urlImagen, String categoria) {
-        this.nombre = nombre;
-        this.descripcion = descripcion;
-        this.precio = precio;
-        this.stock = stock;
-        this.urlImagen = urlImagen;
-        this.categoria = categoria;
     }
 }

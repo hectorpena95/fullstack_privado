@@ -33,12 +33,11 @@ public class UtilidadJwt {
     }
 
     // ===============================================================
-    // VALIDAR TOKEN (CORREGIDO)
-    // Antes solo revisaba la fecha → FALTABA validar firma e integridad
+    // VALIDAR TOKEN
     // ===============================================================
     public Boolean validarToken(String token) {
         try {
-            extraerTodasLasClaims(token); // valida firma, expiración e integridad
+            extraerTodasLasClaims(token); // valida firma e integridad
             return true;
         } catch (Exception e) {
             System.out.println("❌ Token inválido o manipulado: " + e.getMessage());
@@ -47,26 +46,20 @@ public class UtilidadJwt {
     }
 
     // ===============================================================
-    // GENERAR TOKEN
+    // GENERAR TOKEN (CORREGIDO)
     // ===============================================================
     public String generarToken(org.springframework.security.core.userdetails.UserDetails userDetails) {
 
         Map<String, Object> claims = new HashMap<>();
 
-        claims.put("roles", userDetails.getAuthorities()
+        // 🔥 CORRECTO: usar "authorities" en vez de "roles"
+        claims.put("authorities", userDetails.getAuthorities()
                 .stream()
-                .map(a -> a.getAuthority()) // ROLE_ADMIN
+                .map(a -> a.getAuthority())
                 .toList()
         );
 
         return crearToken(claims, userDetails.getUsername());
-    }
-
-    // ===============================================================
-    // FECHA DE EXPIRACIÓN DEL TOKEN
-    // ===============================================================
-    private Boolean esTokenExpirado(String token) {
-        return extraerClaim(token, Claims::getExpiration).before(new Date());
     }
 
     // ===============================================================
@@ -83,7 +76,7 @@ public class UtilidadJwt {
     }
 
     // ===============================================================
-    // EXTRAER CLAIMS (validando firma)
+    // EXTRAER CLAIMS VALIDANDO FIRMA
     // ===============================================================
     private Claims extraerTodasLasClaims(String token) {
         JwtParser parser = Jwts.parserBuilder()

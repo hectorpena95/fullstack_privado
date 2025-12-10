@@ -18,7 +18,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 public class FiltroSolicitudJwt extends OncePerRequestFilter {
@@ -37,53 +36,78 @@ public class FiltroSolicitudJwt extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        // Saltar endpoints de autenticación
-        if (request.getRequestURI().contains("/api/v1/auth/")) {
+        System.out.println("➡️ URI recibida: " + request.getRequestURI());
+
+        // 👉 Evita bloquear OPTIONS (CORS preflight)
+        if (request.getMethod().equals("OPTIONS")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        final String headerAuth = request.getHeader("Authorization");
-        String username = null;
-        String tokenJwt = null;
-
-        if (headerAuth != null && headerAuth.startsWith("Bearer ")) {
-            tokenJwt = headerAuth.substring(7); // quita "Bearer "
-            try {
-                username = utilidadJwt.extraerUsername(tokenJwt);
-            } catch (Exception e) {
-                System.out.println("⚠️ Token inválido");
-            }
+        // 👉 Saltar login
+        if (request.getRequestURI().contains("/api/v1/auth/")) {
+            System.out.println("⛔ Saltando filtro por /auth");
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        // Validar sin authentication previa
+        final String header = request.getHeader("Authorization");
+
+        if (header == null || !header.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        final String token = header.substring(7);
+
+        String username;
+        try {
+            username = utilidadJwt.extraerUsername(token);
+        } catch (Exception e) {
+            System.out.println("⚠️ Token inválido: " + e.getMessage());
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            // Validar token JWT
-            if (utilidadJwt.validarToken(tokenJwt)) {
-
-                // EXTRAER ROLES DEL TOKEN
-                List<String> roles = utilidadJwt.extraerClaim(tokenJwt, claims ->
-                        (List<String>) claims.get("roles")
-                );
-
-                var authorities = roles.stream()
-                        .map(SimpleGrantedAuthority::new)
-                        .collect(Collectors.toList());
-
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                username,
-                                null,
-                                authorities
-                        );
-
-                authentication.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+            if (!utilidadJwt.validarToken(token)) {
+                System.out.println("❌ Token rechazado (firma o expiración)");
+                filterChain.doFilter(request, response);
+                return;
             }
+
+            // 🔥 Cargar usuario real
+            var userDetails = servicioAutenticacion.loadUserByUsername(username);
+
+            List<String> listaRoles = utilidadJwt.extraerClaim(token, claims -> {
+                Object raw = claims.get("authorities");
+                if (raw instanceof List<?> list) {
+                    return list.stream()
+                            .map(Object::toString)
+                            .toList();
+                }
+                return List.of(); // si está malo o null, evitamos excepción
+            });
+
+
+            var authorities = listaRoles.stream()
+                    .map(SimpleGrantedAuthority::new)
+                    .toList();
+
+            System.out.println("🔎 Authorities usando token: " + authorities);
+
+            // 🔥 Token de autenticación correcto
+            UsernamePasswordAuthenticationToken auth =
+                    new UsernamePasswordAuthenticationToken(
+                            userDetails,   // ✔️ UserDetails real
+                            null,
+                            authorities
+                    );
+
+            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+            SecurityContextHolder.getContext().setAuthentication(auth);
         }
 
         filterChain.doFilter(request, response);

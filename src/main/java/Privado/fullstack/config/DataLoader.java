@@ -27,25 +27,65 @@ public class DataLoader implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
+        // ============================
+        // CREAR ROLES
+        // ============================
+        crearRolSiNoExiste("ROLE_ADMIN");
+        crearRolSiNoExiste("ROLE_CLIENTE");
+        crearRolSiNoExiste("ROLE_VENDEDOR");
+        crearRolSiNoExiste("ROLE_CLIENTE_PREMIUM");
+
+        // ============================
+        // CREAR USUARIO ADMIN
+        // ============================
         if (repositorioUsuario.findByUsername("admin").isEmpty()) {
 
-            // Crear rol si no existe
             Rol rolAdmin = repositorioRol.findByName("ROLE_ADMIN")
-                    .orElseGet(() -> repositorioRol.save(new Rol("ROLE_ADMIN")));
+                    .orElseThrow(() -> new RuntimeException("ROLE_ADMIN no encontrado"));
 
-            // Crear usuario admin
             Usuario admin = new Usuario();
             admin.setUsername("admin");
             admin.setEmail("admin@admin.cl");
             admin.setPassword(passwordEncoder.encode("admin123"));
 
-            // 👇 IMPORTANTE: inicializar el Set de roles
             admin.setRoles(new HashSet<>());
             admin.getRoles().add(rolAdmin);
 
             repositorioUsuario.save(admin);
 
-            System.out.println(">>> ADMIN creado correctamente con ROLE_ADMIN");
+            System.out.println(">>> ADMIN creado con ROLE_ADMIN");
         }
+
+        // ============================
+        // CREAR USUARIO VENDEDOR
+        // ============================
+        if (repositorioUsuario.findByUsername("vendedor").isEmpty()) {
+
+            Rol rolVendedor = repositorioRol.findByName("ROLE_VENDEDOR")
+                    .orElseThrow(() -> new RuntimeException("ROLE_VENDEDOR no encontrado"));
+
+            Usuario vendedor = new Usuario();
+            vendedor.setUsername("vendedor");
+            vendedor.setEmail("vendedor@venta.cl");
+            vendedor.setPassword(passwordEncoder.encode("vendedor123"));
+
+            vendedor.setRoles(new HashSet<>());
+            vendedor.getRoles().add(rolVendedor);
+
+            repositorioUsuario.save(vendedor);
+
+            System.out.println(">>> Usuario VENDEDOR creado con ROLE_VENDEDOR");
+        }
+    }
+
+    // ============================
+    // MÉTODO PARA CREAR ROLES
+    // ============================
+    private void crearRolSiNoExiste(String nombreRol) {
+        repositorioRol.findByName(nombreRol)
+                .orElseGet(() -> {
+                    System.out.println(">>> Creando rol: " + nombreRol);
+                    return repositorioRol.save(new Rol(nombreRol));
+                });
     }
 }

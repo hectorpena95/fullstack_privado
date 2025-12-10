@@ -37,53 +37,39 @@ public class ConfiguracionSeguridad {
         http
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
-
-                    config.setAllowedOrigins(List.of(
-                            "http://localhost:5173",
-                            "http://10.0.2.2:8080",
-                            "http://192.168.1.86:8080", // ← IP real tu computador
-                            "*"
-                    ));
+                    config.setAllowedOrigins(List.of("*"));
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-
                     config.setAllowedHeaders(List.of("*"));
                     config.setExposedHeaders(List.of("Authorization"));
-
-                    config.setAllowCredentials(true);
-
+                    config.setAllowCredentials(false); // ← IMPORTANTE PARA SWAGGER
                     return config;
                 }))
                 .csrf(csrf -> csrf.disable())
 
                 .authorizeHttpRequests(auth -> auth
+                        // permitir preflight
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // ENDPOINTS PÚBLICOS
                         .requestMatchers(
                                 "/api/v1/auth/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/img/**"
+                                "/error"                   // ← AGREGADO
                         ).permitAll()
 
-                        // GET catálogo
                         .requestMatchers(HttpMethod.GET, "/api/v1/productos/**")
                         .permitAll()
 
-                        // SOLO ADMIN
                         .requestMatchers(HttpMethod.POST, "/api/v1/productos/**")
-                        .hasAuthority("ROLE_ADMIN")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_VENDEDOR")
+
                         .requestMatchers(HttpMethod.PUT, "/api/v1/productos/**")
-                        .hasAuthority("ROLE_ADMIN")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_VENDEDOR")
+
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/productos/**")
-                        .hasAuthority("ROLE_ADMIN")
-                        .requestMatchers("/api/v1/admin/**")
-                        .hasAuthority("ROLE_ADMIN")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_VENDEDOR")
 
-                        .requestMatchers("/api/privado/hola").hasRole("ADMIN")
-
-
-                        // RESTO AUTENTICADOS
                         .anyRequest().authenticated()
                 )
 

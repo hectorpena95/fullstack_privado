@@ -44,19 +44,31 @@ public class ServicioAutenticacion implements UserDetailsService {
         this.utilidadJwt = utilidadJwt;
     }
 
-    // ==========================
-    //  CARGAR USUARIO POR EMAIL
-    // ==========================
+    // ==========================================================
+    //  ARREGLADO: CARGA POR EMAIL O USERNAME
+    // ==========================================================
     @Override
     @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return repositorioUsuario.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con el email: " + email));
+    public UserDetails loadUserByUsername(String valor) throws UsernameNotFoundException {
+
+        // 1) Buscar por email
+        var porEmail = repositorioUsuario.findByEmail(valor);
+        if (porEmail.isPresent()) {
+            return porEmail.get();
+        }
+
+        // 2) Buscar por username
+        var porUsername = repositorioUsuario.findByUsername(valor);
+        if (porUsername.isPresent()) {
+            return porUsername.get();
+        }
+
+        throw new UsernameNotFoundException("Usuario no encontrado por email o username: " + valor);
     }
 
-    // ==========================
-    //   REGISTRO DE USUARIO
-    // ==========================
+    // ==========================================================
+    //  REGISTRAR USUARIO
+    // ==========================================================
     @Transactional
     public Usuario registrarNuevoUsuario(SolicitudRegistro solicitud) {
 
@@ -72,40 +84,37 @@ public class ServicioAutenticacion implements UserDetailsService {
         usuario.setEmail(solicitud.getEmail());
         usuario.setPassword(codificadorContrasena.encode(solicitud.getPassword()));
 
-        final String NOMBRE_ROL_CLIENTE = "ROLE_CLIENT";
-        Rol rolCliente = repositorioRol.findByName(NOMBRE_ROL_CLIENTE)
-                .orElseThrow(() -> new RuntimeException("Error: El rol de CLIENTE no fue encontrado."));
+        Rol rolCliente = repositorioRol.findByName("ROLE_CLIENTE")
+                .orElseThrow(() -> new RuntimeException("Error: rol CLIENTE no encontrado en la BD"));
 
         Set<Rol> roles = new HashSet<>();
         roles.add(rolCliente);
+
         usuario.setRoles(roles);
 
         return repositorioUsuario.save(usuario);
     }
 
-    // ==========================
-    //   AUTENTICAR & GENERAR TOKEN
-    // ==========================
+    // ==========================================================
+    //  AUTENTICAR & GENERAR TOKEN
+    // ==========================================================
     public String autenticarYGenerarToken(SolicitudLogin solicitud, AuthenticationManager administradorAutenticacion) {
 
-        // Autenticación con email + password
         Authentication authentication = administradorAutenticacion.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        solicitud.getEmail(),
+                        solicitud.getEmail(),   // LOGIN por email
                         solicitud.getPassword()
                 )
         );
 
-        // Usuario autenticado (UserDetails de Spring Security)
         UserDetails detallesUsuario = (UserDetails) authentication.getPrincipal();
 
-        // Generar token JWT correcto
         return utilidadJwt.generarToken(detallesUsuario);
     }
 
-    // ==========================
-    //   DTO DE RESPUESTA LOGIN
-    // ==========================
+    // ==========================================================
+    //  ARMAR DTO LOGIN
+    // ==========================================================
     public RespuestaLogin crearRespuestaLogin(UserDetails userDetails) {
 
         String tokenJwt = utilidadJwt.generarToken(userDetails);
