@@ -1,6 +1,5 @@
 package Privado.fullstack.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -21,6 +20,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
@@ -28,39 +28,60 @@ import java.util.List;
 @EnableMethodSecurity(prePostEnabled = true)
 public class ConfiguracionSeguridad {
 
-    @Autowired
-    private FiltroSolicitudJwt filtroSolicitudJwt;
+    private final FiltroSolicitudJwt filtroSolicitudJwt;
+
+    public ConfiguracionSeguridad(FiltroSolicitudJwt filtroSolicitudJwt) {
+        this.filtroSolicitudJwt = filtroSolicitudJwt;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
+        // ===============================
+        // 🌍 CONFIGURACIÓN CORS GLOBAL
+        // ===============================
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration cors = new CorsConfiguration();
+
+        // ❗ Permite acceso desde toda red LAN / Celulares / Web
+        cors.addAllowedOriginPattern("*");
+
+        cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        cors.setAllowedHeaders(List.of("*"));
+        cors.setExposedHeaders(List.of("Authorization"));
+
+        // ❗ No usar credenciales con "*"
+        cors.setAllowCredentials(false);
+
+        source.registerCorsConfiguration("/**", cors);
+
         http
-                .cors(cors -> cors.configurationSource(request -> {
-                    CorsConfiguration config = new CorsConfiguration();
-                    config.setAllowedOrigins(List.of("*"));
-                    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                    config.setAllowedHeaders(List.of("*"));
-                    config.setExposedHeaders(List.of("Authorization"));
-                    config.setAllowCredentials(false); // ← IMPORTANTE PARA SWAGGER
-                    return config;
-                }))
+                .cors(c -> c.configurationSource(source))
                 .csrf(csrf -> csrf.disable())
 
                 .authorizeHttpRequests(auth -> auth
-                        // permitir preflight
+
+                        // OPTIONS siempre permitido
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
+                        // ============================
+                        // 🟢 ENDPOINTS PÚBLICOS
+                        // ============================
                         .requestMatchers(
                                 "/api/v1/auth/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/error"                   // ← AGREGADO
+                                "/error"
                         ).permitAll()
 
+                        // Productos → GET público
                         .requestMatchers(HttpMethod.GET, "/api/v1/productos/**")
                         .permitAll()
 
+                        // ============================
+                        // 🔐 ENDPOINTS PRIVADOS
+                        // ============================
                         .requestMatchers(HttpMethod.POST, "/api/v1/productos/**")
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_VENDEDOR")
 
@@ -70,6 +91,7 @@ public class ConfiguracionSeguridad {
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/productos/**")
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_VENDEDOR")
 
+                        // Todo lo demás requiere login
                         .anyRequest().authenticated()
                 )
 
